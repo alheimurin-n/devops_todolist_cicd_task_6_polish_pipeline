@@ -16,6 +16,10 @@ on:
         type: choice
         options: ['ubuntu-latest-3.8', 'ubuntu-latest-3.9', 'windows-latest-3.8', 'windows-latest-3.9']
 
+concurrency:
+  group: ${{ github.workflow }} - ${{ github.ref }}
+  cancel-in-progress: true
+  
 env:
   PythonVersion: 3.8
   DockerImageName: todoapp
@@ -143,6 +147,7 @@ jobs:
     uses: ./.github/workflows/reusable-deployment.yml
     needs: [helm-ci, docker-ci]
     secrets: inherit
+    environment: staging
     with:
       environment: development
       version: ${{ github.sha }}
