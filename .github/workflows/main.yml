@@ -7,6 +7,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+
   workflow_dispatch:
     inputs:
       artifact_choice:
@@ -17,9 +18,9 @@ on:
         options: ['ubuntu-latest-3.8', 'ubuntu-latest-3.9', 'windows-latest-3.8', 'windows-latest-3.9']
 
 concurrency:
-  group: ${{ github.workflow }} - ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 env:
   PythonVersion: 3.8
   DockerImageName: todoapp
@@ -157,6 +158,7 @@ jobs:
     uses: ./.github/workflows/reusable-deployment.yml
     needs: [deploy-helm-dev]
     secrets: inherit
+    environment: staging
     with:
       environment: staging
       version: ${{ github.sha }}
