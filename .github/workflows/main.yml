@@ -148,7 +148,6 @@ jobs:
     uses: ./.github/workflows/reusable-deployment.yml
     needs: [helm-ci, docker-ci]
     secrets: inherit
-    environment: staging
     with:
       environment: development
       version: ${{ github.sha }}
@@ -158,7 +157,6 @@ jobs:
     uses: ./.github/workflows/reusable-deployment.yml
     needs: [deploy-helm-dev]
     secrets: inherit
-    environment: staging
     with:
       environment: staging
       version: ${{ github.sha }}
