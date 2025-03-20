@@ -31,7 +31,7 @@ jobs:
       matrix:
         PythonVersion: [3.8, 3.9]
         OsType: [windows-latest, ubuntu-latest]
-    runs-on: ${{matrix.OsType}}
+    runs-on: ${{ matrix.OsType }}
     defaults:
       run:
         working-directory: ./src
@@ -70,7 +70,7 @@ jobs:
       - name: Upload python artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-artifacts
+          name: python-artifacts-${{ matrix.PythonVersion }}-${{ matrix.OsType }}
           path: .
 
       - name: Upload helm artifacts
