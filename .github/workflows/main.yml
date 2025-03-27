@@ -67,11 +67,15 @@ jobs:
         run: |
           flake8 . --exit-zero --max-complexity=6
 
+      - name: Clean up old artifacts
+        run: rm -rf ./src/test-reports || echo "No old artifacts to remove"
+
       - name: Upload python artifacts
         uses: actions/upload-artifact@v4
         with:
           name: python-artifacts-${{ matrix.PythonVersion }}-${{ matrix.OsType }}
           path: .
+          if-no-files-found: ignore
 
       - name: Upload helm artifacts
         if: github.ref_name == 'main'
