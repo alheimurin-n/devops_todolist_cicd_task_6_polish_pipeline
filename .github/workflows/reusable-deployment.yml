@@ -62,16 +62,6 @@ jobs:
         with:
           config: ./cluster.yml
 
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - uses: azure/aks-set-context@v3
-        with:
-          cluster-name: ${{ vars.AZURE_CLUSTER_NAME }}
-          resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
-
       - name: Dry Run Helm
         run: |
           helm install --dry-run ${{ inputs.helm-release-name }} ./todoapp-*.tgz  \
