@@ -7,42 +7,42 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+
   workflow_dispatch:
     inputs:
-      os:
-        description: "Select OS for deployment"
+      environment:
         required: true
-        default: "ubuntu-latest"
+        description: "Environment deploy to..."
         type: choice
-        options:
-          - "ubuntu-latest"
-          - "windows-latest"
-      python_version:
-        description: "Select Python version"
+        options: ['development', 'staging']
+      os-type:
         required: true
-        default: "3.8"
+        description: "Type of operation system"
         type: choice
-        options:
-          - "3.8"
-          - "3.9"
+        options: ['ubuntu-latest', 'windows-latest']
+      python-version:
+        required: true
+        description: "Version of Python"
+        type: choice
+        options: ['3.8', '3.9']
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  PythonVersion: "3.8"
-  OSDefault: ubuntu-latest
+  mainPythonVersion: 3.8
+  mainOS: ubuntu-latest
   DockerImageName: todoapp
 
 jobs:
   python-ci:
+    name: Python CI
     strategy:
       matrix:
-        PythonVersion: ["3.8", "3.9"]
-        OsType: [ubuntu-latest, windows-latest]
-
-    name: Python-CI
-    runs-on: ${{ matrix.OsType }}
+        pythonVersion: [3.8, 3.9]
+        osType: ['ubuntu-latest', 'windows-latest']
+    runs-on: ${{ matrix.osType }}
     defaults:
       run:
         working-directory: ./src
@@ -50,10 +50,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.PythonVersion }}
+      - name: Set up Python ${{ matrix.pythonVersion }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.PythonVersion }}
+          python-version: ${{ matrix.pythonVersion }}
 
       - name: Install dependencies
         run: |
@@ -104,24 +104,25 @@ jobs:
     if: ${{ github.ref_name == 'main' }}
     needs: python-ci
     steps:
-      - uses: actions/download-artifact@v4
-        name: Download python artifacts
-        with:
-          name: python-artifacts-${{ github.event.inputs.os || env.OSDefault }}-${{ github.event.inputs.python_version || env.PythonVersion }}
-          path: .
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    - uses: actions/download-artifact@v4
+      name: Download python artifacts
+      with:
+        name: python-artifacts-${{ env.mainOS }}-${{ env.mainPythonVersion }}
+        path: .
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          context: ./src
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.DockerImageName }}:${{ github.sha }}
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        context: ./src
+        tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.DockerImageName }}:${{ github.sha }}
 
   helm-ci:
     runs-on: ubuntu-latest
@@ -129,28 +130,29 @@ jobs:
     if: github.ref_name == 'main'
     name: Helm CI
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: helm-artifacts-${{ github.event.inputs.os || env.OSDefault }}-${{ github.event.inputs.python_version || env.PythonVersion }}
-          path: .
 
-      - name: Set Up Helm
-        uses: azure/setup-helm@v4.2.0
+    - uses: actions/download-artifact@v4
+      with:
+        name: helm-artifacts-${{ env.mainOS }}-${{ env.mainPythonVersion }}
+        path: .
 
-      - name: Lint helm
-        run: helm lint ./todoapp/
+    - name: Set Up Helm
+      uses: azure/setup-helm@v4.2.0
 
-      - name: Template Helm
-        run: helm template todoapp ./todoapp/ -f ./todoapp/values.yaml
+    - name: Lint helm
+      run: helm lint ./todoapp/
 
-      - name: Package Helm
-        run: helm package ./todoapp
+    - name: Template Helm
+      run: helm template todoapp ./todoapp/ -f ./todoapp/values.yaml
 
-      - name: Upload Helm Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: helm-package
-          path: ./*.tgz
+    - name: Package Helm
+      run: helm package ./todoapp
+
+    - name: Upload Helm Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: helm-package
+        path: ./*.tgz
 
   deploy-helm-dev:
     name: Deploy helm to Development
@@ -160,8 +162,6 @@ jobs:
     with:
       environment: development
       version: ${{ github.sha }}
-      OSType: ${{ github.event.inputs.os || 'ubuntu-latest'}}
-      PythonVersion: ${{ github.event.inputs.python_version || '3.8' }}
 
   deploy-helm-stg:
     name: Deploy helm to Staging
@@ -171,8 +171,5 @@ jobs:
     with:
       environment: staging
       version: ${{ github.sha }}
-      OSType: ${{ github.event.inputs.os || 'ubuntu-latest'}}
-      PythonVersion: ${{ github.event.inputs.python_version || '3.8' }}
       helm-values-path: ./todoapp/values/stg.yaml
       helm-release-name: todoapp-staging
-      node-port: 30008
